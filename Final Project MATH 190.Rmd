@@ -1,0 +1,80 @@
+---
+title: Final Project MATH 190
+output: html_notebook
+author: Jackson Lei
+PID: 730280438
+---
+
+Food webs are commonly used to characterize an ecosystem and illustrate the flow of energy between a variety of organisms (Lafferty, Kevin D, et al). However, most models fail to include parasites, mainly because their relationships with their hosts do not fit the typical predator-prey interactions. It is illogical to illustrate a parasite-host relationship similarly to a predator-prey relationship because their numerous differences. For example, parasites do not eat their hosts entirely. Thus, a food chain that extends an arrow from a tertiary consumer to a flea may be a somewhat misleading representation of energy flow within an ecosystem. Nevertheless, this does not mean to underestimate the effects of parasites and the roll they play with other organisms. The data imported is a matrix depicting relationships between over 100 different organisms which was created during a study conducted at Carpinteria Salt Marsh Reserve. Each of these organisms are categorized by whether they are parasites or freeliving. I will be using the matrix to make different igraphs that will hopefully provide a better visualization of these relationships. These igraphs will also help me use the necessary calculations to obtain insight on the research in the science article describing the study directly related to the imported data. 
+
+
+```{r}
+library(readr)
+library(readxl)
+library(sand)
+carpinteria <- read_csv("carpinteria.csv", col_names = FALSE)
+print(carpinteria)
+m <- as.matrix(carpinteria[4:131,3:130])
+```
+
+This is simply the matrix taken from the study that I will be analyzing in this report. As a matrix, it is pretty straightforward to read. However taking it as it is will be pretty tricky if I were to turn it into an igraph. In R, the names of each organism are also taken in as part of the matrix, not just a column or row label. Thus, I created a new matrix and stored it in another variable, this time removing all the names and keeping only the part of the original matrix with that has numbers indicating whether or not a relationship exists. Another limitation of using an igraph to illustrate the data is that the matrix used different numbers to represent different relationships between organisms. For example, a 4 represents predator- prey while a 7 represents parasite-host. It will be much harder to see these relationships in a network type graph. 
+
+```{r}
+g <- graph_from_adjacency_matrix(m, mode = c("undirected"), weighted=NULL)
+plot(g)
+g <- simplify(graph_from_adjacency_matrix(m, mode = c("undirected"), weighted = NULL))
+V(g)[1:86]$color <- "green"
+V(g)[87:128]$color <-"red"
+plot(g, vertex.size=5)
+graph.density(g)
+transitivity(g)
+V(g)$name <- carpinteria[1,3:130]
+plot(g)
+```
+
+When I turned my matrix into a graph, there were many connections between two nodes that had multiple edges. This is probably because R read relationships between organisms denoted by a number other than one as having multiple edges. This means that having a 9 (actually meaning a parasite-parasite relationship) was taken as having 9 edges between two nodes. The "simplify" function gets rid of multiple edges and gives me a nicer looking graph. I will make note of the transitivities and densities of this graph later on. 
+I also separated parasites from free-living organisms by color: greens are free-living and reds are parasites. Also, when I add names to each of the nodes, the graph becomes very messy as the words and letters cover much of the vertices. Therefore, I will keep future graphs labeled as X1, X2, X3, etc. 
+
+```{r}
+gc<-cluster_louvain(g)
+modularity(gc)
+sizes(gc)
+
+gc1 <- induced_subgraph(g, gc$membership == 1)
+gc2 <- induced_subgraph(g, gc$membership == 2)
+gc3 <- induced_subgraph(g, gc$membership == 3)
+gc4 <- induced_subgraph(g, gc$membership == 4)
+plot(gc1)
+plot(gc2)
+plot(gc3)
+plot(gc4)
+```
+I used the cluster louvain function to look at the different communities in my igraph. I will address the modularity function later on. I made subgraphs for each community to further see where parasites appear within each subgraph. It seems that parasites appear most in the fourth community and least in the third community. 
+
+```{r}
+carpinteria_without_parasites<- read_csv("carpinteria(withoutparasites).csv", col_names=FALSE)
+mwp<-as.matrix(carpinteria_without_parasites[4:86, 3:85])
+
+```
+To examine the effects of parasites on an ecosystem even further, I wanted to make a graph of the matrix but this time involving only free-living organisms. The next few steps will be similar to the calculations I made above, except this time, my ecosystem model has no parasites. I will be making comparisons, mainly the transitivities, densities, and modularities of my two main igraphs and use insights I obtain from these calculations to relate them to the study discussed in the science article. 
+
+```{r}
+gwp<-graph_from_adjacency_matrix(mwp, mode = c("undirected"), weighted = NULL)
+gwp <- simplify(graph_from_adjacency_matrix(mwp, mode = c("undirected"), weighted = NULL))
+graph.density(gwp)
+transitivity(gwp)
+V(gwp)[1:83]$color <- "green"
+plot(gwp, vertex.size = 5)
+```
+
+```{r}
+gcwp <- cluster_louvain(gwp)
+modularity(gcwp)
+sizes(gcwp)
+
+```
+Before comparing densities, transitivities, and modularities, I want to first discuss a common measurement for food web structures: Connectance (Lafferty, Kevin D, et al). It is theorized that this is an easy way to measure ecosystem stability. It is calculated from the ratio of observed relationships between organisms and potential relationships. Coincidentally, in igraph, the way to calculate density in a network is very similar: number of current edges / number of possible edges. The graph.density function lets me compare densities for my network with parasites and network without parasites. I found that my network with parasites had the higher density, which confirms the author's findings in his study that the appearance of parasites in a food web increased connectance. Another way to calculate the "interconnectedness" of organisms within this ecosystem is examining the communities within each network. The graph without parasites had a higher modularity and greater number of communities. This again confirms the claims in the article, since a higher modularity means that the network as a whole is not as connected. It seems that the appearance of parasites also decreased the number of communities and, increased overall network connectedness. Finally, transitivity measures the probability that two nodes share an edge, given that these two nodes have a relationship to a common node. Basically, it is the ratio of the number of triangles in my network, and the number of possible triangles. Transitiviy for the network with parasites was higher than the network without parasites. This makes sense because in a typical food web, the chances of two secondary consumers being each other's food source is very low. Typically, there are no triangles in a food web, as many food webs are comprised numerous of food chains and branches. However having parasites is a different story, since parasites feed on tertiary and secondary consumers alike. 
+
+Ultimately, the calculations I performed confirmed the claims made by the science article, that the appearance of parasites increase ecosystem connectance and plays a huge role in stability. It lends the idea of possible misrepresentation of organism relationships in food webs. This is not to say to include parasites in food webs as parasite-host relationships are different from predator-prey. However, this suggests that food webs may be misleading in representing the big picture, as it underestimates the impact parasites have on ecosystems. In this report I wish I could have analyzed with more depth each subgraph I made with the network with parasites. Although I was able to see how many parasites fall into each community, I was unable to look at exactly which organism was in which community. I also would have liked to see a food pyramid involving the free-living organisms to help me see if there was a correlation between how high organisms are in a food chain and where they fall in my network graph. I would also have liked to be able to make the nodes for each graph be more spaced out so the plot doesn't get so messy so quickly. Perhaps transferring the data to Gephi may help. A closer look at the subgraphs from each community made give more insight into parasites and ecosystems. I have noticed that parasites were most numerous in the fourth community and least numerous in the third, so a closer inspection may provide some correlation between parasite appearance and the types of these organisms in these communities. 
+
+Lafferty, Kevin D, et al. “Parasites Dominate Food Web Links.” Proceedings of the National Academy of Sciences of the United States of America, National Academy of Sciences, 25 July 2006, www.ncbi.nlm.nih.gov/pmc/articles/PMC1544067/.
